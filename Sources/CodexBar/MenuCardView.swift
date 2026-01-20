@@ -762,11 +762,11 @@ extension UsageMenuCardView.Model {
         let zaiTokenDetail = Self.zaiLimitDetailText(limit: zaiUsage?.tokenLimit)
         let zaiTimeDetail = Self.zaiLimitDetailText(limit: zaiUsage?.timeLimit)
         if let primary = snapshot.primary {
-            let paceDetail = Self.monthlyPaceDetail(
+            let paceDetail = input.provider == .copilot ? Self.monthlyPaceDetail(
                 provider: input.provider,
                 window: primary,
                 now: input.now,
-                showUsed: input.usageBarsShowUsed)
+                showUsed: input.usageBarsShowUsed) : nil
             metrics.append(Metric(
                 id: "primary",
                 title: input.metadata.sessionLabel,
@@ -781,17 +781,11 @@ extension UsageMenuCardView.Model {
                 paceOnTop: paceDetail?.paceOnTop ?? true))
         }
         if let weekly = snapshot.secondary {
-            let weeklyPace = Self.weeklyPaceDetail(
+            let paceDetail = Self.weeklyPaceDetail(
                 provider: input.provider,
                 window: weekly,
                 now: input.now,
                 showUsed: input.usageBarsShowUsed)
-            let monthlyPace = Self.monthlyPaceDetail(
-                provider: input.provider,
-                window: weekly,
-                now: input.now,
-                showUsed: input.usageBarsShowUsed)
-            let paceDetail = weeklyPace ?? monthlyPace
 
             metrics.append(Metric(
                 id: "secondary",

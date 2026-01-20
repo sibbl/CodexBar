@@ -44,8 +44,7 @@ struct UsageProgressBar: View {
             let fillWidth = proxy.size.width * self.clamped / 100
             let paceWidth = proxy.size.width * Self.clampedPercent(self.pacePercent) / 100
             let tipWidth = max(25, proxy.size.height * 6.5)
-            let stripeInset = 1 / scale
-            let tipOffset = paceWidth - tipWidth + (Self.paceStripeSpan(for: scale) / 2) + stripeInset
+            let tipOffset = paceWidth - (tipWidth / 2)
             let showTip = self.pacePercent != nil && tipWidth > 0.5
             let needsPunchCompositing = showTip
             let bar = ZStack(alignment: .leading) {
@@ -95,7 +94,7 @@ struct UsageProgressBar: View {
             } else if useDeficitRed {
                 .red
             } else {
-                .green
+                .white
             }
 
             ZStack {
@@ -127,11 +126,9 @@ struct UsageProgressBar: View {
 
         let stripeWidth = Self.paceStripeWidth(for: scale)
         let punchWidth = stripeWidth * 3
-        let stripeInset = 1 / scale
-        let stripeAnchorX = align(rect.maxX - stripeInset)
         let stripeMinY = align(stripeTopY)
         let stripeMaxY = align(stripeBottomY)
-        let anchorTopX = stripeAnchorX
+        let anchorTopX = align(size.width / 2 + punchWidth / 2)
         var punchedStripe = Path()
         var centerStripe = Path()
         let availableWidth = (anchorTopX - punchWidth) - rect.minX

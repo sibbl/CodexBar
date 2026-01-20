@@ -9,6 +9,13 @@ enum UsagePaceText {
         let stage: UsagePace.Stage
     }
 
+    struct MonthlyDetail: Sendable {
+        let leftLabel: String
+        let rightLabel: String?
+        let expectedUsedPercent: Double
+        let stage: UsagePace.Stage
+    }
+
     private static let minimumExpectedPercent: Double = 3
 
     static func weeklySummary(provider: UsageProvider, window: RateWindow, now: Date = .init()) -> String? {
@@ -22,6 +29,15 @@ enum UsagePaceText {
     static func weeklyDetail(provider: UsageProvider, window: RateWindow, now: Date = .init()) -> WeeklyDetail? {
         guard let pace = weeklyPace(provider: provider, window: window, now: now) else { return nil }
         return WeeklyDetail(
+            leftLabel: Self.detailLeftLabel(for: pace),
+            rightLabel: Self.detailRightLabel(for: pace, now: now),
+            expectedUsedPercent: pace.expectedUsedPercent,
+            stage: pace.stage)
+    }
+
+    static func monthlyDetail(provider: UsageProvider, window: RateWindow, now: Date = .init()) -> MonthlyDetail? {
+        guard let pace = monthlyPace(provider: provider, window: window, now: now) else { return nil }
+        return MonthlyDetail(
             leftLabel: Self.detailLeftLabel(for: pace),
             rightLabel: Self.detailRightLabel(for: pace, now: now),
             expectedUsedPercent: pace.expectedUsedPercent,
@@ -60,6 +76,14 @@ enum UsagePaceText {
         guard provider == .codex || provider == .claude else { return nil }
         guard window.remainingPercent > 0 else { return nil }
         guard let pace = UsagePace.weekly(window: window, now: now, defaultWindowMinutes: 10080) else { return nil }
+        guard pace.expectedUsedPercent >= Self.minimumExpectedPercent else { return nil }
+        return pace
+    }
+
+    static func monthlyPace(provider: UsageProvider, window: RateWindow, now: Date) -> UsagePace? {
+        guard provider == .copilot else { return nil }
+        guard window.remainingPercent > 0 else { return nil }
+        guard let pace = UsagePace.monthly(window: window, now: now) else { return nil }
         guard pace.expectedUsedPercent >= Self.minimumExpectedPercent else { return nil }
         return pace
     }

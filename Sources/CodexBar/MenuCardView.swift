@@ -762,6 +762,11 @@ extension UsageMenuCardView.Model {
         let zaiTokenDetail = Self.zaiLimitDetailText(limit: zaiUsage?.tokenLimit)
         let zaiTimeDetail = Self.zaiLimitDetailText(limit: zaiUsage?.timeLimit)
         if let primary = snapshot.primary {
+            let paceDetail = Self.monthlyPaceDetail(
+                provider: input.provider,
+                window: primary,
+                now: input.now,
+                showUsed: input.usageBarsShowUsed)
             metrics.append(Metric(
                 id: "primary",
                 title: input.metadata.sessionLabel,
@@ -770,17 +775,24 @@ extension UsageMenuCardView.Model {
                 percentStyle: percentStyle,
                 resetText: Self.resetText(for: primary, style: input.resetTimeDisplayStyle, now: input.now),
                 detailText: input.provider == .zai ? zaiTokenDetail : nil,
-                detailLeftText: nil,
-                detailRightText: nil,
-                pacePercent: nil,
-                paceOnTop: true))
+                detailLeftText: paceDetail?.leftLabel,
+                detailRightText: paceDetail?.rightLabel,
+                pacePercent: paceDetail?.pacePercent,
+                paceOnTop: paceDetail?.paceOnTop ?? true))
         }
         if let weekly = snapshot.secondary {
-            let paceDetail = Self.weeklyPaceDetail(
+            let weeklyPace = Self.weeklyPaceDetail(
                 provider: input.provider,
                 window: weekly,
                 now: input.now,
                 showUsed: input.usageBarsShowUsed)
+            let monthlyPace = Self.monthlyPaceDetail(
+                provider: input.provider,
+                window: weekly,
+                now: input.now,
+                showUsed: input.usageBarsShowUsed)
+            let paceDetail = weeklyPace ?? monthlyPace
+
             metrics.append(Metric(
                 id: "secondary",
                 title: input.metadata.weeklyLabel,
@@ -846,6 +858,27 @@ extension UsageMenuCardView.Model {
         showUsed: Bool) -> PaceDetail?
     {
         guard let detail = UsagePaceText.weeklyDetail(provider: provider, window: window, now: now) else { return nil }
+        let expectedUsed = detail.expectedUsedPercent
+        let actualUsed = window.usedPercent
+        let expectedPercent = showUsed ? expectedUsed : (100 - expectedUsed)
+        let actualPercent = showUsed ? actualUsed : (100 - actualUsed)
+        if expectedPercent.isFinite == false || actualPercent.isFinite == false { return nil }
+        let paceOnTop = actualUsed <= expectedUsed
+        let pacePercent: Double? = if detail.stage == .onTrack { nil } else { expectedPercent }
+        return PaceDetail(
+            leftLabel: detail.leftLabel,
+            rightLabel: detail.rightLabel,
+            pacePercent: pacePercent,
+            paceOnTop: paceOnTop)
+    }
+
+    private static func monthlyPaceDetail(
+        provider: UsageProvider,
+        window: RateWindow,
+        now: Date,
+        showUsed: Bool) -> PaceDetail?
+    {
+        guard let detail = UsagePaceText.monthlyDetail(provider: provider, window: window, now: now) else { return nil }
         let expectedUsed = detail.expectedUsedPercent
         let actualUsed = window.usedPercent
         let expectedPercent = showUsed ? expectedUsed : (100 - expectedUsed)

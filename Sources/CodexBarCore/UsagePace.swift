@@ -67,6 +67,55 @@ public struct UsagePace: Sendable {
             willLastToReset: willLastToReset)
     }
 
+    public static func monthly(
+        window: RateWindow,
+        now: Date = .init()) -> UsagePace?
+    {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let components = calendar.dateComponents([.year, .month], from: now)
+        guard let startOfMonth = calendar.date(from: components) else { return nil }
+        guard let startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth) else { return nil }
+
+        let duration = startOfNextMonth.timeIntervalSince(startOfMonth)
+        let elapsed = now.timeIntervalSince(startOfMonth)
+
+        let expected = Self.clamp((elapsed / duration) * 100, lower: 0, upper: 100)
+        let actual = Self.clamp(window.usedPercent, lower: 0, upper: 100)
+
+        let delta = actual - expected
+        let stage = Self.stage(for: delta)
+
+        var etaSeconds: TimeInterval?
+        var willLastToReset = false
+
+        let timeUntilReset = duration - elapsed
+
+        if elapsed > 0, actual > 0 {
+            let rate = actual / elapsed
+            if rate > 0 {
+                let remaining = max(0, 100 - actual)
+                let candidate = remaining / rate
+                if candidate >= timeUntilReset {
+                    willLastToReset = true
+                } else {
+                    etaSeconds = candidate
+                }
+            }
+        } else if elapsed > 0, actual == 0 {
+            willLastToReset = true
+        }
+
+        return UsagePace(
+            stage: stage,
+            deltaPercent: delta,
+            expectedUsedPercent: expected,
+            actualUsedPercent: actual,
+            etaSeconds: etaSeconds,
+            willLastToReset: willLastToReset)
+    }
+
     private static func stage(for delta: Double) -> Stage {
         let absDelta = abs(delta)
         if absDelta <= 2 { return .onTrack }
